@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 
 namespace Yuqiao {
  // Each reading surface owns its position. Only a new user message positions
@@ -10,15 +11,15 @@ namespace Yuqiao {
   string key=null,lastUserId="",text="";
   int lastUserEnd,spacerLines;
   int selectionStart,selectionLength;
-  bool pending,anchor,applying,relativeToQuestion;
+  bool pending,anchor,applying,relativeToQuestion,queued;
   double savedOffset,questionDistance;
 
   public ConversationReadingPosition(TextBox box){
    this.box=box;
-   box.Loaded+=(s,e)=>ApplyPending();
-   box.IsVisibleChanged+=(s,e)=>ApplyPending();
-   box.SizeChanged+=(s,e)=>ApplyPending();
-   box.LayoutUpdated+=(s,e)=>ApplyPending();
+   box.Loaded+=(s,e)=>QueueApply();
+   box.IsVisibleChanged+=(s,e)=>QueueApply();
+   box.SizeChanged+=(s,e)=>QueueApply();
+   box.LayoutUpdated+=(s,e)=>QueueApply();
   }
   public void Move(string before,string after){if(key==before)key=after;}
   public void Update(string conversationKey,ConversationDocument document){
@@ -39,10 +40,17 @@ namespace Yuqiao {
    applying=true;
    try{box.Text=new string('\n',spacerLines)+text;box.UpdateLayout();}
    finally{applying=false;}
-   ApplyPending();
+   QueueApply();
+  }
+  void QueueApply(){
+   if(!pending||queued)return;
+   queued=true;
+   // SizeChanged can fire before the TextBox's inner scroll viewer has its
+   // final viewport. Wait for this layout pass before consuming the anchor.
+   box.Dispatcher.BeginInvoke(DispatcherPriority.Loaded,new Action(()=>{queued=false;ApplyPending();}));
   }
   void ApplyPending(){
-   if(!pending||applying||box.ActualWidth<=0||box.ViewportHeight<=0)return;
+   if(!pending||applying||!box.IsLoaded||box.ActualWidth<=0||box.ViewportHeight<=0)return;
    applying=true;
    try{
     box.UpdateLayout();
