@@ -17,36 +17,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Import audited source files for the first release
-        id: import
-        if: github.event_name != 'pull_request'
-        shell: pwsh
-        run: |
-          if (-not (Test-Path -LiteralPath 'source-import.json')) { exit 0 }
-          $ErrorActionPreference = 'Stop'
-          $bundle = Get-Content -LiteralPath 'source-import.json' -Raw -Encoding UTF8 | ConvertFrom-Json
-          $seen = @{}
-          $root = [IO.Path]::GetFullPath($PWD.Path) + [IO.Path]::DirectorySeparatorChar
-          foreach ($file in $bundle.files) {
-            if ($file.path -notmatch '^(src/[A-Za-z0-9.]+\.(cs|manifest)|tests/[A-Za-z0-9.-]+\.(cs|ps1)|docs/[A-Za-z0-9.-]+\.(md|svg)|scripts/Package\.ps1|README(\.en)?\.md|LICENSE|CHANGELOG\.md|build\.ps1|\.gitignore|\.gitattributes)$') { throw 'Unexpected source path' }
-            if ($seen.ContainsKey($file.path)) { throw 'Duplicate source path' }
-            $seen[$file.path] = $true
-            $target = [IO.Path]::GetFullPath((Join-Path $PWD $file.path))
-            if (-not $target.StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) { throw 'Source path outside repository' }
-            New-Item -ItemType Directory -Path (Split-Path $target) -Force | Out-Null
-            [IO.File]::WriteAllText($target, $file.content, [Text.UTF8Encoding]::new($false))
-          }
-          if ($bundle.files.Count -ne 48) { throw 'Incomplete source bundle' }
-          Remove-Item -LiteralPath 'source-import.json'
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- src tests docs scripts README.md README.en.md LICENSE CHANGELOG.md build.ps1 .gitignore .gitattributes source-import.json
-          if ($LASTEXITCODE -ne 0) { throw 'Could not stage source files' }
-          git commit -m 'Publish audited Yuqiao source, tests and bilingual documentation'
-          if ($LASTEXITCODE -ne 0) { throw 'Could not commit source files' }
-          git push origin HEAD:main
-          if ($LASTEXITCODE -ne 0) { throw 'Source branch changed; inspect before retrying' }
-          'bootstrapped=true' >> $env:GITHUB_OUTPUT
+        with:
+          persist-credentials: false
       - name: Build both editions
         shell: pwsh
         run: .\build.ps1
@@ -57,7 +29,7 @@ jobs:
         shell: pwsh
         run: .\scripts\Package.ps1 -SkipBuild
       - name: Publish both portable editions
-        if: steps.import.outputs.bootstrapped == 'true' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
