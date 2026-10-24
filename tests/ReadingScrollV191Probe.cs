@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -85,7 +85,9 @@ class ReadingScrollV191Probe {
   using(var hidden=new Surface(false)){
    hidden.Update("hidden",new ConversationDocument{Text="我 · 中文原稿\n"+question,LastUserId="u:late",LastUserEnd=("我 · 中文原稿\n"+question).Length});
    hidden.Update("hidden",new ConversationDocument{Text="我 · 中文原稿\n"+question+"\nClaude · 中文翻译\n"+Answer(30),LastUserId="u:late",LastUserEnd=("我 · 中文原稿\n"+question).Length});
-   hidden.Arrange();Check(Math.Abs(hidden.Bottom(question)-hidden.ReadingBottom)<3,"a previously hidden reading window anchors after its first layout");
+   hidden.Arrange();
+   Console.WriteLine("METRIC: first revealed question bottom="+hidden.Bottom(question)+" readingBottom="+hidden.ReadingBottom+" viewport="+hidden.Box.ViewportHeight+" offset="+hidden.Box.VerticalOffset);
+   Check(Math.Abs(hidden.Bottom(question)-hidden.ReadingBottom)<3,"a previously hidden reading window anchors after its first layout");
   }
   using(var longQuestion=new Surface(true)){
    string content=new string('问',180)+"\n请先解释第一步。";
