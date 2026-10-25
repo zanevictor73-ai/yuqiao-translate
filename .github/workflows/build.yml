@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish v1.9.2 after checks pass
+        description: Publish v1.10.0 after checks pass
         type: boolean
         default: false
 permissions:
@@ -19,6 +19,37 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+      - name: Apply reviewed v1.10.0 source update
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifestPath = Join-Path (Get-Location) 'yuqiao-source-update.json'
+          if (-not (Test-Path -LiteralPath $manifestPath)) { exit 0 }
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          if ($manifest.format -ne 'yuqiao-reviewed-update-v110' -or $manifest.files.Count -ne 24) { throw 'Unexpected source manifest' }
+          $rootPath = (Get-Location).Path + [IO.Path]::DirectorySeparatorChar
+          foreach ($file in $manifest.files) {
+            if ($file.path -notmatch '^(src/[^/]+\.cs|tests/[^/]+\.(cs|ps1)|docs/[^/]+\.(md|svg)|scripts/Package\.ps1|README(\.en)?\.md|CHANGELOG\.md)$') { throw 'Unexpected file path' }
+            $targetPath = [IO.Path]::GetFullPath((Join-Path $rootPath $file.path))
+            if (-not $targetPath.StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase)) { throw 'Path is outside repository' }
+            $bytes = [Convert]::FromBase64String($file.base64)
+            $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+            if ($digest -ne $file.sha256) { throw 'Source hash mismatch' }
+            [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($targetPath)) | Out-Null
+            [IO.File]::WriteAllBytes($targetPath, $bytes)
+          }
+          Remove-Item -LiteralPath $manifestPath
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- src tests docs scripts README.md README.en.md CHANGELOG.md yuqiao-source-update.json
+          git commit -m 'Add English Claude conversation flow with bilingual documentation and 224 checks'
+          if ($LASTEXITCODE -ne 0) { throw 'Source commit failed' }
+          gh auth setup-git
+          if ($LASTEXITCODE -ne 0) { throw 'Workflow Git authentication failed' }
+          git push origin HEAD:main
+          if ($LASTEXITCODE -ne 0) { throw 'Source publication failed; no force push is permitted' }
       - name: Build both editions
         shell: pwsh
         run: .\build.ps1
@@ -36,5 +67,5 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $revision = git rev-parse HEAD
-          gh release create v1.9.2 release/Yuqiao-Claude-v1.9.2-windows.zip release/Yuqiao-General-v1.9.2-windows.zip release/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --target $revision --title '语桥 Yuqiao v1.9.2 · Claude 双向对话翻译' --notes-file docs/RELEASE-v1.9.2.md
+          gh release create v1.10.0 release/Yuqiao-Claude-v1.10.0-windows.zip release/Yuqiao-General-v1.10.0-windows.zip release/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --target $revision --title '语桥 Yuqiao v1.10.0 · Claude 英日双向对话翻译' --notes-file docs/RELEASE-v1.10.0.md
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed; existing releases are never overwritten' }
