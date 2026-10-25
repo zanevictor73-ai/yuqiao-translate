@@ -10,7 +10,7 @@ if(-not(Test-Path -LiteralPath $framework)){$framework=Join-Path $env:WINDIR 'Mi
 $compiler=Join-Path $framework 'csc.exe'
 $references=@('System.dll','System.Core.dll','System.Xaml.dll','System.Net.Http.dll') | ForEach-Object {'/r:'+(Join-Path $framework $_)}
 $references+=@('PresentationFramework.dll','PresentationCore.dll','WindowsBase.dll','UIAutomationClient.dll','UIAutomationTypes.dll') | ForEach-Object {'/r:'+(Join-Path (Join-Path $framework 'WPF') $_)}
-$checks=[ordered]@{ConversationV19Probe=37;AutoFillV18Probe=31;SettingsVoiceV19Probe=24;UiStateProbe=31;FloatingViewsProbe=15;FloatingStateProbe=14;ReadingScrollV191Probe=22}
+$checks=[ordered]@{ConversationV19Probe=37;AutoFillV18Probe=31;SettingsVoiceV19Probe=24;UiStateProbe=31;FloatingViewsProbe=15;FloatingStateProbe=14;ReadingScrollV191Probe=22;EnglishConversationProbe=29}
 $total=0
 foreach($name in $checks.Keys){
  $exe=Join-Path $directory ($name+'.exe');$result=Join-Path $directory ($name+'.txt')

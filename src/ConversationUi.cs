@@ -61,20 +61,20 @@ namespace Yuqiao {
    }
    requestedSendVersion=outgoing.Version;requestedSendKey=boundConversationKey;requestedSendAt=DateTime.UtcNow;
    outgoing.Changed=DateTime.UtcNow.AddSeconds(-1);
-   fillStatus.Text="已收到回车；当前日文就绪后发送这一句。修改中文会取消本次发送。";UpdateFillState();
+   fillStatus.Text="已收到回车；当前所选译文就绪后发送这一句。修改中文会取消本次发送。";UpdateFillState();
   }
   TextBox LocalEditor(){return floatingMode&&floatInput!=null&&floatInput.IsVisible?floatInput.Input:outgoing.Source;}
-  string SelectedJapanese(){var choice=floatingMode&&floatInput!=null?floatInput.Candidates.SelectedItem as Choice:null;return choice==null?outgoing.Second.Text:choice.Text;}
+  string SelectedTranslation(){var choice=floatingMode&&floatInput!=null?floatInput.Candidates.SelectedItem as Choice:null;return choice==null?CurrentTranslation:choice.Text;}
   async Task TryRequestedSend(ChatSnapshot snapshot){
    if(requestedSendVersion<0||sendBusy||filling)return;
    if(requestedSendVersion!=outgoing.Version||requestedSendKey!=boundConversationKey||active.IsChecked!=true){requestedSendVersion=-1;return;}
    if((DateTime.UtcNow-requestedSendAt).TotalSeconds>20){requestedSendVersion=-1;fillStatus.Text="等待译文超时，未发送；中文已保留，请核对后再按回车。";return;}
    if(testWindow==IntPtr.Zero&&!ClaudeSend.IsInteractionForeground(boundConversationKey)){requestedSendVersion=-1;fillStatus.Text="已切换到其他软件，本次回车发送已取消。";return;}
-   if(!CanFillJapanese()||ClaudeSend.IsEnterHeld())return;
-   string japanese=SelectedJapanese(),key=boundConversationKey,chinese=outgoing.Source.Text;
-   if(japanese!=outgoing.Second.Text&&(alternativeSource!=outgoing.Seen||japanese!=alternativeText))return;
+   if(!CanFillTranslation()||ClaudeSend.IsEnterHeld())return;
+   string japanese=SelectedTranslation(),key=boundConversationKey,chinese=outgoing.Source.Text;
+   if(!IsCurrentCandidate(japanese))return;
    int version=outgoing.Version,generation=epoch;requestedSendVersion=-1;
-   sendBusy=true;filling=true;fillStatus.Text="正在按你的回车指令发送日文…";UpdateFillState();
+   sendBusy=true;filling=true;fillStatus.Text="正在按你的回车指令发送译文…";UpdateFillState();
    using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(outgoing.Cancel==null?CancellationToken.None:outgoing.Cancel.Token)){
     try{
      await Task.Run(()=>automaticComposer(key,japanese,automaticDraft.Key==key?automaticDraft.OwnedText:null,cancel.Token));
@@ -118,7 +118,7 @@ namespace Yuqiao {
   }
   async void TranslateObservedUser(string key,ChatUserMessage message){
    try{
-    var result=await service.TranslateAsync(message.Text,"ja","zh-Hans",CancellationToken.None);
+    var result=await service.TranslateAsync(message.Text,ConversationLanguages.ReplySource(message.Text,false)??"auto","zh-Hans",CancellationToken.None);
     if(closed)return;
     conversationHistory.User(key,message,result.Text,false,false);RefreshHistory();
    }catch(Exception){}

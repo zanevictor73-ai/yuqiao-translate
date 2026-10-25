@@ -23,6 +23,8 @@ namespace Yuqiao
         public CheckBox Follow;
         public CheckBox AutoFill;
         public Button FullMode;
+        public ComboBox LanguageSelector;
+        public TextBlock EmptyHint;
         public bool IsComposing { get; private set; }
         public event Action HideRequested;
         public event Action SendRequested;
@@ -30,12 +32,19 @@ namespace Yuqiao
 
         public FloatingInputWindow()
         {
-            FloatingUi.Configure(this, "语桥 · 中文输入", 480, 290, 390, 248);
+            FloatingUi.Configure(this, "语桥 · 中文输入", 480, 324, 390, 282);
             Follow = FloatingUi.FollowControl();
             FullMode = FloatingUi.SmallButton("完整窗口", "打开完整翻译窗口");
             StackPanel content;
             Border shell = FloatingUi.CreateShell(this, "语桥 · 中文输入", Follow, FullMode, RequestHide, out content);
             Content = shell;
+
+            var languageRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0,0,0,7) };
+            languageRow.Children.Add(new TextBlock { Text = "发送语言", Foreground = FloatingUi.Muted, FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0,0,9,0) });
+            LanguageSelector = new ComboBox { Width = 150, FontSize = 12, Padding = new Thickness(5,2,5,2) };
+            LanguageSelector.Items.Add("日文 / Japanese");LanguageSelector.Items.Add("英文 / English");LanguageSelector.SelectedIndex=0;
+            System.Windows.Automation.AutomationProperties.SetName(LanguageSelector,"发送语言");
+            languageRow.Children.Add(LanguageSelector);content.Children.Add(languageRow);
 
             Grid candidateArea = new Grid { Height = 96 };
             Candidates = new ListBox
@@ -68,6 +77,7 @@ namespace Yuqiao
                 VerticalAlignment = VerticalAlignment.Center,
                 IsHitTestVisible = false
             };
+            EmptyHint = empty;
             Style placeholder = new Style(typeof(TextBlock));
             placeholder.Setters.Add(new Setter(VisibilityProperty, Visibility.Collapsed));
             DataTrigger noCandidates = new DataTrigger { Binding = new Binding("HasItems") { Source = Candidates }, Value = false };

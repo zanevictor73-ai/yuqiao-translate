@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1320" height="490" viewBox="0 0 1320 490" role="img" aria-labelledby="title desc">
 <title id="title">语桥：将双向翻译接入 Claude 的对话流程</title>
-<desc id="desc">流程示意，不是产品截图。中文输入自动翻译为日文填入 Claude，用户自行发送；日文回复同步译为右侧的中文。</desc>
+<desc id="desc">流程示意，不是产品截图。中文输入自动翻译为英文或日文填入 Claude，用户自行发送；英日文回复同步译为右侧的中文。</desc>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#86dcc8" stroke-width="1.3"/></marker></defs>
 <rect width="1320" height="490" rx="22" fill="#111820"/>
 <g font-family="Microsoft YaHei UI, Noto Sans CJK SC, sans-serif">
@@ -16,8 +16,8 @@
 <text x="510" y="175" fill="#86dcc8" font-size="18">02  Claude 对话 / Chat</text>
 <text x="510" y="224" fill="#f1f5fa" font-size="19">短い自己紹介を書いてください。</text>
 <text x="510" y="267" fill="#b7c5d5" font-size="17">↳ もちろんです。</text>
-<text x="510" y="331" fill="#aebfd0" font-size="16">日文自动填入，发送由你决定</text>
-<text x="510" y="363" fill="#aebfd0" font-size="15">Auto-fill Japanese · You send</text>
+<text x="510" y="331" fill="#aebfd0" font-size="16">英日文自动填入，发送由你决定</text>
+<text x="510" y="363" fill="#aebfd0" font-size="15">English / Japanese · You send</text>
 <text x="955" y="175" fill="#86dcc8" font-size="18">03  右侧中文 / Read</text>
 <text x="955" y="224" fill="#f1f5fa" font-size="19">你：请帮我写一个简短的…</text>
 <text x="955" y="267" fill="#f1f5fa" font-size="19">Claude：当然可以。</text>

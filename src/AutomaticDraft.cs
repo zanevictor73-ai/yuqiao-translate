@@ -25,15 +25,15 @@ namespace Yuqiao {
   public bool TryPlan(string key,string draft,string desired,out string expected){
    expected=null;Observe(key,draft);draft=(draft??"").Trim();desired=(desired??"").Trim();
    if(String.IsNullOrWhiteSpace(key)||desired.Length==0||suppressed==Revision)return false;
-   if(draft==desired){Status="日文已在 Claude 输入框中，尚未发送。";return false;}
+   if(draft==desired){Status="译文已在 Claude 输入框中，尚未发送。";return false;}
    if(draft.Length>0&&(OwnedText==null||draft!=OwnedText)){
-    Status="Claude 已有其他草稿，已保留；清空后可自动填入本次日文。";return false;
+    Status="Claude 已有其他草稿，已保留；清空后可自动填入本次译文。";return false;
    }
    string signature=Revision+"\u001f"+key+"\u001f"+draft+"\u001f"+desired;
    if(attempt==signature)return false;
    attempt=signature;expected=OwnedText??"";return true;
   }
-  public void RecordVerified(string key,string desired){if(Key==key){OwnedText=desired.Trim();Status="日文已自动填入 Claude，尚未发送。";}}
+  public void RecordVerified(string key,string desired){if(Key==key){OwnedText=desired.Trim();Status="译文已自动填入 Claude，尚未发送。";}}
   public void RecordFailure(string status){Status=status;}
  }
 }

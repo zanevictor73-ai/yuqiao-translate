@@ -39,6 +39,7 @@ namespace Yuqiao {
  /// <summary>Only product settings are persisted; no message text or translations.</summary>
  public sealed class AppPreferences {
   public string SelectedAppId="claude";
+  public string ConversationLanguage="ja";
   static readonly object fileLock=new object();
   public static string SettingsPath {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"YuqiaoTranslateStandalone","settings.json");}}
 
@@ -59,6 +60,7 @@ namespace Yuqiao {
     var preferences=new JavaScriptSerializer{MaxJsonLength=16384}.Deserialize<AppPreferences>(json);
     if(preferences==null)return new AppPreferences();
     preferences.SelectedAppId=AppCatalog.Get(preferences.SelectedAppId).Id;
+    preferences.ConversationLanguage=preferences.ConversationLanguage=="en"?"en":"ja";
     return preferences;
    }catch(ArgumentException){return new AppPreferences();}
     catch(InvalidOperationException){return new AppPreferences();}
@@ -66,7 +68,8 @@ namespace Yuqiao {
 
   internal string ToJson(){
    return new JavaScriptSerializer().Serialize(new {
-    SelectedAppId=AppCatalog.Get(SelectedAppId).Id
+    SelectedAppId=AppCatalog.Get(SelectedAppId).Id,
+    ConversationLanguage=ConversationLanguage=="en"?"en":"ja"
    });
   }
 

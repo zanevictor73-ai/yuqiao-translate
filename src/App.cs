@@ -40,7 +40,7 @@ namespace Yuqiao {
  public sealed partial class BridgeWindow:Window {
   readonly TranslationService service=new TranslationService(); ChatWindowReader reader; readonly IntPtr testWindow;
   readonly DispatcherTimer timer=new DispatcherTimer(); readonly Lane outgoing=new Lane(), incoming=new Lane();
-  TextBlock connection,footer,fillStatus; CheckBox active,pin,forceJapanese; ComboBox target; Button reconnect,fillJapanese; string profile="claude", boundTitle="", boundConversationKey="", lastReplyId="", lastReply="";
+  TextBlock connection,footer,fillStatus; CheckBox active,pin,forceJapanese; ComboBox target; Button reconnect,fillTranslation; string profile="claude", boundTitle="", boundConversationKey="", lastReplyId="", lastReply="";
   bool busy,closed,baseline,suppressActiveEvents,newConversationTransitionAvailable,updatingSource,connected,filling; int epoch; string diagnosticFile;
   FloatingInputWindow floatInput; FloatingReadWindow floatRead; bool floatingMode,syncFloating,placing,mainComposing,inspectFloating;
   readonly DispatcherTimer placementTimer=new DispatcherTimer();
@@ -88,7 +88,7 @@ namespace Yuqiao {
    outer.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});outer.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});outer.RowDefinitions.Add(new RowDefinition());outer.RowDefinitions.Add(new RowDefinition{Height=GridLength.Auto});
    var header=new StackPanel();outer.Children.Add(header);
    header.Children.Add(new TextBlock{Text="语桥  ·  实时翻译",FontSize=26,FontWeight=FontWeights.SemiBold,Foreground=blue});
-   header.Children.Add(new TextBlock{Text="说中文或写中文，日文自动填入 Claude；由你确认发送",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,16),Foreground=Brushes.DimGray});
+   header.Children.Add(new TextBlock{Text="说中文或写中文，选择日文或英文填入 Claude；由你确认发送",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,8,0,16),Foreground=Brushes.DimGray});
    var bar=new StackPanel();Grid.SetRow(bar,1);outer.Children.Add(bar);
    var targetRow=new DockPanel{LastChildFill=false,Margin=new Thickness(0,0,0,10)};bar.Children.Add(targetRow);
    targetRow.Children.Add(new TextBlock{Text="监听目标",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,12,0)});
@@ -97,7 +97,7 @@ namespace Yuqiao {
    var controls=new WrapPanel();bar.Children.Add(controls);
    active=new CheckBox{Content="自动翻译",IsChecked=true,Margin=new Thickness(0,7,18,7),VerticalContentAlignment=VerticalAlignment.Center};controls.Children.Add(active);
    autoFill=new CheckBox{Content="自动填入日文",IsChecked=true,Margin=new Thickness(0,7,18,7),ToolTip="目前用于 Claude；仅更新助手自己写入的日文，保留其他草稿。"};controls.Children.Add(autoFill);
-   autoFill.Checked+=(s,e)=>{automaticDraft.InputChanged();UpdateFillState();};autoFill.Unchecked+=(s,e)=>{if(autoFillCancellation!=null)autoFillCancellation.Cancel();fillStatus.Text="已关闭自动填入；仍可手动填入日文，不会发送。";UpdateFillState();};
+   autoFill.Checked+=(s,e)=>{automaticDraft.InputChanged();UpdateFillState();};autoFill.Unchecked+=(s,e)=>{if(autoFillCancellation!=null)autoFillCancellation.Cancel();fillStatus.Text="已关闭自动填入；仍可手动填入所选译文，不会发送。";UpdateFillState();};
    pin=new CheckBox{Content="窗口置顶",Margin=new Thickness(0,7,18,7)};controls.Children.Add(pin);pin.Checked+=(s,e)=>Topmost=true;pin.Unchecked+=(s,e)=>Topmost=false;
    reconnect=Button("重新连接",()=>Reset());controls.Children.Add(reconnect);
    controls.Children.Add(Button("使用说明",()=>ShowHelp()));
@@ -112,7 +112,7 @@ namespace Yuqiao {
    navigationView=new NavigationContent{Margin=new Thickness(12)};
    tabs.Items.Add(new TabItem{Header="  目录 / 头像菜单  ",Content=new ScrollViewer{Content=navigationView,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,HorizontalScrollBarVisibility=ScrollBarVisibility.Disabled}});
    navigationTranslator=new NavigationTranslator(service);navigationTranslator.Updated+=ApplyNavigation;
-   footer=new TextBlock{Text="日文自动填入 · 回车发送后清空中文 · Shift + Enter 换行\n普通联网翻译交给 Microsoft / Google；不需要大模型密钥。",FontSize=11,TextWrapping=TextWrapping.Wrap,Foreground=Brushes.Gray};Grid.SetRow(footer,3);outer.Children.Add(footer);
+   footer=new TextBlock{Text="日文 / 英文自动填入 · 回车发送后清空中文 · Shift + Enter 换行\n普通联网翻译交给 Microsoft / Google；不需要大模型密钥。",FontSize=11,TextWrapping=TextWrapping.Wrap,Foreground=Brushes.Gray};Grid.SetRow(footer,3);outer.Children.Add(footer);
    System.Windows.Input.TextCompositionManager.AddPreviewTextInputStartHandler(outgoing.Source,(s,e)=>{mainComposing=true;UpdateFillState();});
    System.Windows.Input.TextCompositionManager.AddPreviewTextInputUpdateHandler(outgoing.Source,(s,e)=>{mainComposing=true;UpdateFillState();});
    outgoing.Source.PreviewTextInput+=(s,e)=>{mainComposing=false;UpdateFillState();};
@@ -124,7 +124,7 @@ namespace Yuqiao {
 
    Deactivated+=(s,e)=>Dispatcher.BeginInvoke(DispatcherPriority.Background,new Action(()=>{if(!closed&&!floatingMode&&!IsActive)StopVoice();}));
    StateChanged+=(s,e)=>{if(floatingMode&&WindowState!=WindowState.Minimized)ShowFullMode();else if(!floatingMode&&WindowState==WindowState.Minimized)StopVoice();};
-   Closed+=(s,e)=>{closed=true;CancelVoice();timer.Stop();placementTimer.Stop();navigationTimer.Stop();navigationTranslator.Dispose();Cancel(outgoing);Cancel(incoming);if(floatInput!=null)floatInput.ClosePermanently();if(floatRead!=null)floatRead.ClosePermanently();if(floatNavigation!=null)floatNavigation.ClosePermanently();if(panelControls!=null)panelControls.Close();service.Dispose();};InitializeConversationUi(controls,tabs);UpdateFillState();
+   Closed+=(s,e)=>{closed=true;CancelVoice();timer.Stop();placementTimer.Stop();navigationTimer.Stop();navigationTranslator.Dispose();Cancel(outgoing);Cancel(incoming);if(floatInput!=null)floatInput.ClosePermanently();if(floatRead!=null)floatRead.ClosePermanently();if(floatNavigation!=null)floatNavigation.ClosePermanently();if(panelControls!=null)panelControls.Close();service.Dispose();};InitializeConversationUi(controls,tabs);InitializeLanguageUi(controls);UpdateFillState();
   }
   Button Button(string title,Action action){var b=new Button{Content=title,Padding=new Thickness(12,6,12,6),Margin=new Thickness(0,0,8,0),Background=Brushes.White,BorderBrush=new SolidColorBrush(Color.FromRgb(211,220,233))};b.Click+=(s,e)=>action();return b;}
   TextBox TextArea(string name,int height){var t=new TextBox{IsReadOnly=true,TextWrapping=TextWrapping.Wrap,AcceptsReturn=true,VerticalScrollBarVisibility=ScrollBarVisibility.Auto,Background=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(9),FontSize=16,MinHeight=height};AutomationProperties.SetName(t,name);return t;}
@@ -143,12 +143,12 @@ namespace Yuqiao {
    lane.First=TextArea(send?"英文译文":"中文译文",70);lane.First.Height=send?95:150;
    if(send){
     lane.Second=TextArea("日文译文",70);lane.Second.Height=105;
-    AddResult(panel,"日本語  给目标软件的日文",lane.Second);
-    fillJapanese=Button("填入日文",()=>{FillCurrentJapanese();});fillJapanese.HorizontalAlignment=HorizontalAlignment.Left;fillJapanese.Margin=new Thickness(0,9,0,5);panel.Children.Add(fillJapanese);
-    fillStatus=new TextBlock{Text="日文完成后自动填入；按回车发送，确认后清空本次中文。",FontSize=12,Foreground=Brushes.Gray,TextWrapping=TextWrapping.Wrap};panel.Children.Add(fillStatus);
-    AddResult(panel,"ENGLISH  英文参考",lane.First);
+    AddResult(panel,"日本語  日文译文（可选择自动填入）",lane.Second);
+    fillTranslation=Button("填入日文",()=>{FillCurrentTranslation();});fillTranslation.HorizontalAlignment=HorizontalAlignment.Left;fillTranslation.Margin=new Thickness(0,9,0,5);panel.Children.Add(fillTranslation);
+    fillStatus=new TextBlock{Text="所选语言完成后自动填入；按回车发送，确认后清空本次中文。",FontSize=12,Foreground=Brushes.Gray,TextWrapping=TextWrapping.Wrap};panel.Children.Add(fillStatus);
+    AddResult(panel,"ENGLISH  英文译文（可选择自动填入）",lane.First);
    }else AddResult(panel,"简体中文 · 阅读辅助",lane.First);
-   lane.Status=new TextBlock{Text=send?"在上方输入中文，停顿后自动翻译…":"连接后自动翻译当前最新日文回复…",Margin=new Thickness(0,12,0,0),FontSize=12,Foreground=Brushes.Gray,TextWrapping=TextWrapping.Wrap};panel.Children.Add(lane.Status);
+   lane.Status=new TextBlock{Text=send?"在上方输入中文，停顿后自动翻译…":"连接后自动翻译当前最新日文或英文回复…",Margin=new Thickness(0,12,0,0),FontSize=12,Foreground=Brushes.Gray,TextWrapping=TextWrapping.Wrap};panel.Children.Add(lane.Status);
    if(!send){
     forceJapanese=new CheckBox{Content="把当前回复按日文翻译（用于纯汉字日文）",FontSize=12,Margin=new Thickness(0,10,0,0)};panel.Children.Add(forceJapanese);forceJapanese.Checked+=(s,e)=>InvalidateIncoming();forceJapanese.Unchecked+=(s,e)=>InvalidateIncoming();
     panel.Children.Add(new TextBlock{Text="左侧目录、最近会话和头像菜单的中文对照，见“目录 / 头像菜单”页。悬浮模式下会显示独立中文小窗。",Margin=new Thickness(0,18,0,6),FontSize=12,TextWrapping=TextWrapping.Wrap,Foreground=Brushes.DimGray});
@@ -157,18 +157,18 @@ namespace Yuqiao {
   }
   void AddResult(StackPanel panel,string title,TextBox result){var row=new DockPanel{LastChildFill=false,Margin=new Thickness(0,12,0,4)};row.Children.Add(new TextBlock{Text=title,FontWeight=FontWeights.SemiBold,VerticalAlignment=VerticalAlignment.Center});var copy=Button("复制",()=>Copy(result.Text));DockPanel.SetDock(copy,Dock.Right);row.Children.Add(copy);panel.Children.Add(row);panel.Children.Add(result);}
   void Copy(string text){if(String.IsNullOrEmpty(text))return;try{Clipboard.SetText(text);}catch{MessageBox.Show(this,"剪贴板正忙，请再试一次。","语桥");}}
-  void ShowHelp(){MessageBox.Show(this,"1. 在监听目标中选择 Claude、ChatGPT 或 DeepSeek Harness，再打开对应客户端。默认是 Claude。\n2. 在本工具的“中文输入”框里写中文，停顿约 0.6 秒后自动显示日文和英文。也可点“语音输入”，光标会回到中文框并调用 Windows＋H。请先选择中文输入法，在 Windows 面板结束听写；系统可能联网，请核对识别文字。\n3. Claude 默认开启自动填入：日文完成后写入 Claude；普通输入会把光标交回 Claude。按回车发送，确认消息出现后自动清空本次中文。中文框按 Shift + Enter 换行；拼音选字时回车不会发送。语音听写期间光标留在中文框，回车会结束听写并发送。继续修改中文会更新本助手写入的日文；手动修改或清空 Claude 草稿后会停下，等待新的中文。可取消“自动填入日文”，改用手动填入。ChatGPT 为实验适配，当前版本未开放填入。\n4. 切换悬浮模式后，可用 Alt + ↑ / ↓ 选择不同日文措辞。旁边的对话窗保留你的中文原稿和 Claude 的中文译文；已有消息会标注“日文译回中文”。顶端小条可以分别显示或隐藏三个小窗。“目录与菜单”小窗会同步 Claude 左侧目录、最近会话标题和头像菜单的纯中文与图标，并贴近原侧栏逐行显示。也可在完整窗口的“目录 / 头像菜单”页查看。原界面保持日文，操作仍点击原菜单。\n5. 切换到另一段聊天后会暂停，请点“重新连接”。暂停和重连会保留本地中文草稿。\n6. 手动打开语桥即可使用，关闭窗口即退出。右侧中文对话以你的最新提问为阅读起点，译文更新保留你的阅读位置。\n\n实际兼容与客户端版本有关，已验收范围见随包说明。只自动识别含假名的日文；纯汉字日文可勾选按日文翻译。回复会在文字短暂停顿后更新，单条最多 5000 字。\n\n翻译通过 Microsoft / Google 网络服务完成，无需大模型密钥，但仍然调用翻译 API，并非离线或完全不使用 AI。免费通道可能限流或变化；短句以 3—4 秒为目标，网络异常可能更慢。聊天文字不写入设置文件，关闭后不恢复。","语桥 · 使用说明");}
+  void ShowHelp(){MessageBox.Show(this,"1. 在监听目标中选择 Claude、ChatGPT 或 DeepSeek Harness，再打开对应客户端。默认是 Claude。\n2. 在本工具的“中文输入”框里写中文，停顿约 0.6 秒后自动显示日文和英文。也可点“语音输入”，光标会回到中文框并调用 Windows＋H。请先选择中文输入法，在 Windows 面板结束听写；系统可能联网，请核对识别文字。\n3. 在“发送语言”中选日文或英文。Claude 默认开启自动填入：所选译文完成后写入 Claude；普通输入会把光标交回 Claude。按回车发送，确认消息出现后自动清空本次中文。中文框按 Shift + Enter 换行；拼音选字时回车不会发送。语音听写期间光标留在中文框，回车会结束听写并发送。继续修改中文会更新本助手写入的译文；手动修改或清空 Claude 草稿后会停下，等待新的中文。可取消“自动填入”，改用手动填入。ChatGPT 为实验适配，当前版本未开放填入。\n4. 切换悬浮模式后，可用 Alt + ↑ / ↓ 选择不同日文措辞。旁边的对话窗保留你的中文原稿和 Claude 的中文译文；已有消息会标注“原文译回中文”。顶端小条可以分别显示或隐藏三个小窗。“目录与菜单”小窗会同步 Claude 左侧目录、最近会话标题和头像菜单的纯中文与图标，并贴近原侧栏逐行显示。也可在完整窗口的“目录 / 头像菜单”页查看。原界面保持日文，操作仍点击原菜单。\n5. 切换到另一段聊天后会暂停，请点“重新连接”。暂停和重连会保留本地中文草稿。\n6. 手动打开语桥即可使用，关闭窗口即退出。右侧中文对话以你的最新提问为阅读起点，译文更新保留你的阅读位置。\n\n实际兼容与客户端版本有关，已验收范围见随包说明。自动识别含假名的日文和英文回复；纯汉字日文可勾选按日文翻译。回复会在文字短暂停顿后更新，单条最多 5000 字。\n\n翻译通过 Microsoft / Google 网络服务完成，无需大模型密钥，但仍然调用翻译 API，并非离线或完全不使用 AI。免费通道可能限流或变化；短句以 3—4 秒为目标，网络异常可能更慢。聊天文字不写入设置文件，关闭后不恢复。","语桥 · 使用说明");}
   void Cancel(Lane lane){lane.Version++;if(Object.ReferenceEquals(lane,outgoing)){alternativeText="";alternativeProvider="";alternativeSource="";alternativeStatus="";}if(lane.Cancel!=null){lane.Cancel.Cancel();lane.Cancel.Dispose();lane.Cancel=null;}}
   ChatWindowReader CreateReader(){return testWindow==IntPtr.Zero?new ChatWindowReader(profile):new ChatWindowReader(testWindow);}
   void Pause(string status){ResetSendState();automaticDraft.Suspend();CancelVoice();epoch++;connected=false;Clear(outgoing);Clear(incoming);baseline=false;connection.Text=status;outgoing.Status.Text="已暂停，中文草稿已保留。";incoming.Status.Text="翻译已暂停，当前无有效译文。";if(!filling)fillStatus.Text="已暂停；中文草稿保留，修改中文后继续自动填入。";UpdateFillState();}
   void Clear(Lane lane){Cancel(lane);bool keepDraft=Object.ReferenceEquals(lane,outgoing);lane.Seen=keepDraft?lane.Source.Text:"";lane.Done="";lane.Id="";lane.Changed=DateTime.UtcNow;if(!keepDraft)lane.Source.Text="";lane.First.Text="";if(lane.Second!=null)lane.Second.Text="";}
-  void InvalidateIncoming(){Cancel(incoming);incoming.Done="";incoming.Changed=DateTime.UtcNow;incoming.First.Text="";incoming.Status.Text=String.IsNullOrWhiteSpace(incoming.Seen)?"等待新的日文回复…":"翻译方式已更新，等待片刻…";}
-  void RestoreWaitingStatus(Lane lane,bool receive){if(String.IsNullOrWhiteSpace(lane.Seen)&&String.IsNullOrEmpty(lane.First.Text)&&(lane.Second==null||String.IsNullOrEmpty(lane.Second.Text)))lane.Status.Text=receive?"等待当前日文回复…":"在上方输入中文，停顿后自动翻译…";}
-  void MarkDisconnected(string status){connected=false;connection.Text=status;if(baseline||!String.IsNullOrEmpty(incoming.Seen)){Clear(incoming);incoming.Status.Text="连接后自动读取当前最新日文回复…";}baseline=false;UpdateFillState();}
-  void Reset(){ResetSendState();automaticDraft.Suspend();ResetNavigation();CancelVoice();epoch++;connected=false;baseline=false;boundTitle="";boundConversationKey="";newConversationTransitionAvailable=profile=="claude";lastReplyId="";lastReply="";Clear(outgoing);Clear(incoming);outgoing.Status.Text=String.IsNullOrWhiteSpace(outgoing.Seen)?"在上方输入中文，停顿后自动翻译…":"中文草稿已保留，准备重新翻译…";incoming.Status.Text="连接后自动读取当前最新日文回复…";if(!filling)fillStatus.Text="中文草稿已保留；修改中文后继续自动填入，不发送。";connection.Text="正在连接 "+TargetName()+"…";reader=CreateReader();suppressActiveEvents=true;try{active.IsChecked=true;}finally{suppressActiveEvents=false;}UpdateFillState();}
+  void InvalidateIncoming(){Cancel(incoming);incoming.Done="";incoming.Changed=DateTime.UtcNow;incoming.First.Text="";incoming.Status.Text=String.IsNullOrWhiteSpace(incoming.Seen)?"等待新的日文或英文回复…":"翻译方式已更新，等待片刻…";}
+  void RestoreWaitingStatus(Lane lane,bool receive){if(String.IsNullOrWhiteSpace(lane.Seen)&&String.IsNullOrEmpty(lane.First.Text)&&(lane.Second==null||String.IsNullOrEmpty(lane.Second.Text)))lane.Status.Text=receive?WaitingReply:"在上方输入中文，停顿后自动翻译…";}
+  void MarkDisconnected(string status){connected=false;connection.Text=status;if(baseline||!String.IsNullOrEmpty(incoming.Seen)){Clear(incoming);incoming.Status.Text="连接后自动读取当前最新日文或英文回复…";}baseline=false;UpdateFillState();}
+  void Reset(){ResetSendState();automaticDraft.Suspend();ResetNavigation();CancelVoice();epoch++;connected=false;baseline=false;boundTitle="";boundConversationKey="";newConversationTransitionAvailable=profile=="claude";lastReplyId="";lastReply="";Clear(outgoing);Clear(incoming);outgoing.Status.Text=String.IsNullOrWhiteSpace(outgoing.Seen)?"在上方输入中文，停顿后自动翻译…":"中文草稿已保留，准备重新翻译…";incoming.Status.Text="连接后自动读取当前最新日文或英文回复…";if(!filling)fillStatus.Text="中文草稿已保留；修改中文后继续自动填入，不发送。";connection.Text="正在连接 "+TargetName()+"…";reader=CreateReader();suppressActiveEvents=true;try{active.IsChecked=true;}finally{suppressActiveEvents=false;}UpdateFillState();}
   string TargetName(){return AppCatalog.Get(profile).DisplayName.Replace(" 客户端","");}
-  bool CanFillJapanese(){return !closed&&!filling&&!mainComposing&&(floatInput==null||!floatInput.IsComposing)&&active.IsChecked==true&&connected&&AppCatalog.Get(profile).CanFill&&boundConversationKey.StartsWith(profile+"|",StringComparison.Ordinal)&&!String.IsNullOrWhiteSpace(outgoing.Seen)&&outgoing.Done==outgoing.Seen&&!String.IsNullOrWhiteSpace(outgoing.Second.Text);}
-  void UpdateFillState(){if(fillJapanese==null)return;fillJapanese.IsEnabled=CanFillJapanese();outgoing.Source.IsReadOnly=filling&&!automaticFilling;fillJapanese.Content="手动填入 "+TargetName()+"（日文）";fillJapanese.ToolTip=connected?"自动填入已默认开启；此按钮用于手动重试，不会发送。":"请先连接 "+TargetName()+"。";if(autoFill!=null)autoFill.IsEnabled=profile=="claude";UpdateVoiceButton(voiceButton);if(voiceStatus!=null)voiceStatus.Text=VoiceStatusText();SyncFloating();}
+  bool CanFillTranslation(){return !closed&&!filling&&!mainComposing&&(floatInput==null||!floatInput.IsComposing)&&active.IsChecked==true&&connected&&AppCatalog.Get(profile).CanFill&&boundConversationKey.StartsWith(profile+"|",StringComparison.Ordinal)&&!String.IsNullOrWhiteSpace(outgoing.Seen)&&outgoing.Done==outgoing.Seen&&!String.IsNullOrWhiteSpace(CurrentTranslation);}
+  void UpdateFillState(){if(fillTranslation==null)return;fillTranslation.IsEnabled=CanFillTranslation();outgoing.Source.IsReadOnly=filling&&!automaticFilling;fillTranslation.Content="手动填入 "+TargetName()+"（"+LanguageName+"）";fillTranslation.ToolTip=connected?"自动填入已默认开启；此按钮用于手动重试，不会发送。":"请先连接 "+TargetName()+"。";if(autoFill!=null)autoFill.IsEnabled=profile=="claude";UpdateVoiceButton(voiceButton);if(voiceStatus!=null)voiceStatus.Text=VoiceStatusText();SyncLanguageUi();SyncFloating();}
   string VoiceStatusText(){return voiceHint;}
   void UpdateVoiceButton(Button button){
    if(button==null)return;
@@ -181,9 +181,9 @@ namespace Yuqiao {
    if(closed||filling||mainComposing||(floatInput!=null&&floatInput.IsComposing))return;
    TextBox editor=floatingMode&&floatInput!=null&&floatInput.IsVisible?floatInput.Input:outgoing.Source;
    try{
-    if(systemVoiceRequested){systemVoiceEnder(editor);systemVoiceRequested=false;voiceHint="已结束听写；日文就绪后，光标回到 Claude。";UpdateFillState();if(testWindow==IntPtr.Zero&&CanFillJapanese())await Task.Run(()=>targetFocuser(boundConversationKey));return;}
+    if(systemVoiceRequested){systemVoiceEnder(editor);systemVoiceRequested=false;voiceHint="已结束听写；所选译文就绪后，光标回到 Claude。";UpdateFillState();if(testWindow==IntPtr.Zero&&CanFillTranslation())await Task.Run(()=>targetFocuser(boundConversationKey));return;}
     systemVoiceLauncher(editor);systemVoiceRequested=true;voiceRequestedAt=DateTime.UtcNow;voiceError=false;
-    voiceHint="已打开 Windows 听写：请说中文。日文自动填入；回车结束听写并发送。";
+    voiceHint="已打开 Windows 听写：请说中文。所选译文自动填入；回车结束听写并发送。";
    }catch(Exception ex){systemVoiceRequested=false;voiceError=true;voiceHint="未能打开系统语音输入："+ex.Message;}
    UpdateFillState();
   }
@@ -193,11 +193,11 @@ namespace Yuqiao {
   void CancelVoice(){systemVoiceRequested=false;}
   async Task TryAutomaticFill(ChatSnapshot snapshot){
    if(awaitingSendReceipt||sendBusy)return;
-   if(profile!="claude"||autoFill.IsChecked!=true||!CanFillJapanese())return;
+   if(profile!="claude"||autoFill.IsChecked!=true||!CanFillTranslation())return;
    if(testWindow==IntPtr.Zero&&(!ClaudeSend.IsInteractionForeground(boundConversationKey)||(requestedSendVersion>=0&&ClaudeSend.IsEnterHeld())))return;
-   string desired=outgoing.Second.Text;
+   string desired=CurrentTranslation;
    if(floatingMode&&floatInput!=null){Choice choice=floatInput.Candidates.SelectedItem as Choice;if(choice!=null)desired=choice.Text;}
-   if(desired!=outgoing.Second.Text&&(alternativeSource!=outgoing.Seen||desired!=alternativeText))return;
+   if(!IsCurrentCandidate(desired))return;
    string previous;
    if(!automaticDraft.TryPlan(boundConversationKey,snapshot.Draft,desired,out previous)){
     if(automaticDraft.Status.Length>0&&requestedSendVersion<0)fillStatus.Text=automaticDraft.Status;return;
@@ -206,22 +206,22 @@ namespace Yuqiao {
    TextBox localEditor=floatingMode&&floatInput!=null?floatInput.Input:outgoing.Source;
    using(var focus=new LocalInputFocusGuard(systemVoiceRequested?localEditor:null,key))
    using(var cancel=CancellationTokenSource.CreateLinkedTokenSource(outgoing.Cancel==null?CancellationToken.None:outgoing.Cancel.Token)){
-    autoFillCancellation=cancel;automaticFilling=true;filling=true;fillStatus.Text="正在自动填入日文，不发送…";UpdateFillState();
+    autoFillCancellation=cancel;automaticFilling=true;filling=true;fillStatus.Text="正在自动填入译文，不发送…";UpdateFillState();
     try{
      await Task.Run(()=>automaticComposer(key,desired,previous,cancel.Token));
-     if(!closed&&generation==epoch&&key==boundConversationKey){automaticDraft.RecordVerified(key,desired);conversationFlow.Written(snapshot,key,chinese,desired,version);lastVerifiedFill=DateTime.UtcNow;fillStatus.Text="日文已填入；回车发送，发送后自动清空本次中文。";if(!systemVoiceRequested&&testWindow==IntPtr.Zero)await Task.Run(()=>targetFocuser(key));}
+     if(!closed&&generation==epoch&&key==boundConversationKey){automaticDraft.RecordVerified(key,desired);conversationFlow.Written(snapshot,key,chinese,desired,version);lastVerifiedFill=DateTime.UtcNow;fillStatus.Text="译文已填入；回车发送，发送后自动清空本次中文。";if(!systemVoiceRequested&&testWindow==IntPtr.Zero)await Task.Run(()=>targetFocuser(key));}
     }catch(OperationCanceledException){if(!closed)fillStatus.Text="中文或自动填入状态已变化，等待最新译文。";}
      catch(Exception ex){if(!closed){fillStatus.Text=ex is InvalidOperationException?ex.Message:"自动填入暂未成功，请检查 Claude 当前输入框。";automaticDraft.RecordFailure(fillStatus.Text);}}
     finally{autoFillCancellation=null;automaticFilling=false;filling=false;if(!closed)UpdateFillState();}
    }
   }
-  async void FillCurrentJapanese(string selected=null){
-   if(!CanFillJapanese()){fillStatus.Text="请先连接 "+TargetName()+"，并等待当前中文的日文译文完成。";return;}
-   string expectedProfile=profile,expectedKey=boundConversationKey,japanese=selected??outgoing.Second.Text,chinese=outgoing.Source.Text;int version=outgoing.Version,generation=epoch;
-   if(japanese!=outgoing.Second.Text&&(alternativeSource!=outgoing.Seen||japanese!=alternativeText)){fillStatus.Text="候选已过期，请等待当前中文重新翻译。";return;}
-   filling=true;fillStatus.Text="正在把日文填入 "+TargetName()+"…";UpdateFillState();
+  async void FillCurrentTranslation(string selected=null){
+   if(!CanFillTranslation()){fillStatus.Text="请先连接 "+TargetName()+"，并等待当前中文的所选译文完成。";return;}
+   string expectedProfile=profile,expectedKey=boundConversationKey,japanese=selected??CurrentTranslation,chinese=outgoing.Source.Text;int version=outgoing.Version,generation=epoch;
+   if(!IsCurrentCandidate(japanese)){fillStatus.Text="候选已过期，请等待当前中文重新翻译。";return;}
+   filling=true;fillStatus.Text="正在把译文填入 "+TargetName()+"…";UpdateFillState();
    string previous=automaticDraft.Key==expectedKey?automaticDraft.OwnedText:null;
-   try{await Task.Run(()=>{if(expectedProfile=="claude")ClaudeComposer.FillJapanese(expectedProfile,expectedKey,japanese,previous,CancellationToken.None);else GenericDesktopAdapter.FillJapanese(expectedProfile,expectedKey,japanese);});if(!closed){lastVerifiedFill=DateTime.UtcNow;if(expectedProfile=="claude"&&generation==epoch){automaticDraft.Observe(expectedKey,japanese);automaticDraft.RecordVerified(expectedKey,japanese);conversationFlow.Written(latestSnapshot??new ChatSnapshot(),expectedKey,chinese,japanese,version);}fillStatus.Text=version==outgoing.Version&&generation==epoch?"已填入日文，尚未发送。请到 "+TargetName()+" 确认后发送。":"已处理点击时的日文译文，请到目标软件核对；当前中文已变化。";}}
+   try{await Task.Run(()=>{if(expectedProfile=="claude")ClaudeComposer.FillJapanese(expectedProfile,expectedKey,japanese,previous,CancellationToken.None);else GenericDesktopAdapter.FillJapanese(expectedProfile,expectedKey,japanese);});if(!closed){lastVerifiedFill=DateTime.UtcNow;if(expectedProfile=="claude"&&generation==epoch){automaticDraft.Observe(expectedKey,japanese);automaticDraft.RecordVerified(expectedKey,japanese);conversationFlow.Written(latestSnapshot??new ChatSnapshot(),expectedKey,chinese,japanese,version);}fillStatus.Text=version==outgoing.Version&&generation==epoch?"已填入译文，尚未发送。请到 "+TargetName()+" 确认后发送。":"已处理点击时的译文，请到目标软件核对；当前中文已变化。";}}
    catch(Exception ex){if(!closed)fillStatus.Text=ex is InvalidOperationException?ex.Message:"暂时无法填入，请确认目标窗口和当前会话。";}
    finally{filling=false;if(!closed)UpdateFillState();}
   }
@@ -240,13 +240,14 @@ namespace Yuqiao {
     floatInput.Input.PreviewTextInput+=(s,e)=>UpdateFillState();floatInput.Input.LostKeyboardFocus+=(s,e)=>UpdateFillState();
     floatInput.FullMode.Click+=(s,e)=>ShowFullMode();floatRead.FullMode.Click+=(s,e)=>ShowFullMode();
     floatInput.Voice.Click+=(s,e)=>ToggleVoice();
-    floatInput.Fill.Click+=(s,e)=>{Choice choice=floatInput.Candidates.SelectedItem as Choice;if(choice!=null)FillCurrentJapanese(choice.Text);};
+    floatInput.LanguageSelector.SelectionChanged+=(s,e)=>{if(!syncingLanguage)SetConversationLanguage(floatInput.LanguageSelector.SelectedIndex==1?"en":"ja");};
+    floatInput.Fill.Click+=(s,e)=>{Choice choice=floatInput.Candidates.SelectedItem as Choice;if(choice!=null)FillCurrentTranslation(choice.Text);};
     floatInput.Candidates.SelectionChanged+=(s,e)=>{if(!syncFloating){automaticDraft.InputChanged();if(autoFillCancellation!=null)autoFillCancellation.Cancel();UpdateFillState();}};
     floatInput.AutoFill.Checked+=(s,e)=>{if(!syncFloating)autoFill.IsChecked=true;};floatInput.AutoFill.Unchecked+=(s,e)=>{if(!syncFloating)autoFill.IsChecked=false;};
    }
    floatingMode=true;SyncFloating();placementTimer.Start();WindowState=WindowState.Minimized;
    ApplyNavigation();
-   if(!String.IsNullOrWhiteSpace(outgoing.Second.Text)&&outgoing.Done==outgoing.Seen&&outgoing.Cancel!=null&&alternativeSource!=outgoing.Seen){alternativeStatus="第二种日文措辞正在翻译…";alternativePending=RunAlternative(outgoing.Seen,outgoing.Version,epoch,outgoing.Cancel.Token);}
+   if(conversationLanguage=="ja"&&!String.IsNullOrWhiteSpace(outgoing.Second.Text)&&outgoing.Done==outgoing.Seen&&outgoing.Cancel!=null&&alternativeSource!=outgoing.Seen){alternativeStatus="第二种日文措辞正在翻译…";alternativePending=RunAlternative(outgoing.Seen,outgoing.Version,epoch,outgoing.Cancel.Token);}
   }
   void ShowFullMode(){
    floatingMode=false;placementTimer.Stop();if(floatInput!=null){floatInput.Hide();floatRead.Hide();}if(floatNavigation!=null)floatNavigation.Hide();if(panelControls!=null)panelControls.Hide();
@@ -313,8 +314,8 @@ namespace Yuqiao {
     floatInput.Input.IsReadOnly=filling&&!automaticFilling;UpdateVoiceButton(floatInput.Voice);
     floatInput.AutoFill.IsChecked=autoFill.IsChecked;floatInput.AutoFill.IsEnabled=profile=="claude";
     var choices=new List<Choice>();
-    if(!String.IsNullOrWhiteSpace(outgoing.Second.Text)&&outgoing.Done==outgoing.Seen)choices.Add(new Choice{Text=outgoing.Second.Text,Provider="推荐日文"});
-    if(alternativeSource==outgoing.Seen&&!String.IsNullOrWhiteSpace(alternativeText)&&alternativeText.Trim()!=outgoing.Second.Text.Trim())choices.Add(new Choice{Text=alternativeText,Provider="另一种措辞 · Google"});
+    if(!String.IsNullOrWhiteSpace(CurrentTranslation)&&outgoing.Done==outgoing.Seen)choices.Add(new Choice{Text=CurrentTranslation,Provider="推荐"+LanguageName});
+    if(conversationLanguage=="ja"&&alternativeSource==outgoing.Seen&&!String.IsNullOrWhiteSpace(alternativeText)&&alternativeText.Trim()!=outgoing.Second.Text.Trim())choices.Add(new Choice{Text=alternativeText,Provider="另一种措辞 · Google"});
     string signature=String.Join("\u001f",choices.ConvertAll(c=>c.Provider+"\u001e"+c.Text).ToArray());
     if(candidateSignature!=signature){
      Choice previous=floatInput.Candidates.SelectedItem as Choice;candidateSignature=signature;
@@ -322,8 +323,8 @@ namespace Yuqiao {
      if(previous!=null){for(int i=0;i<choices.Count;i++)if(choices[i].Text==previous.Text)selection=i;}
      floatInput.Candidates.SelectedIndex=choices.Count==0?-1:selection;
     }
-    floatInput.Fill.IsEnabled=CanFillJapanese()&&floatInput.Candidates.SelectedItem!=null;
-    floatInput.Status.Text=(voiceError?VoiceStatusText()+"\n":"")+(sendBusy||awaitingSendReceipt||requestedSendVersion>=0?fillStatus.Text:filling?"正在自动填入日文…":CanFillJapanese()||outgoing.Source.Text.Length==0?fillStatus.Text:outgoing.Status.Text);
+    floatInput.Fill.IsEnabled=CanFillTranslation()&&floatInput.Candidates.SelectedItem!=null;
+    floatInput.Status.Text=(voiceError?VoiceStatusText()+"\n":"")+(sendBusy||awaitingSendReceipt||requestedSendVersion>=0?fillStatus.Text:filling?"正在自动填入译文…":CanFillTranslation()||outgoing.Source.Text.Length==0?fillStatus.Text:outgoing.Status.Text);
     floatInput.Voice.ToolTip=VoiceStatusText();
     RefreshHistory();floatRead.Japanese.Text=incoming.Source.Text;
     floatRead.Status.Text=connected?incoming.Status.Text:connection.Text;
@@ -401,17 +402,17 @@ namespace Yuqiao {
    }catch(Exception){if(!closed&&generation==epoch){MarkDisconnected("暂时无法读取窗口，正在等待恢复…");Schedule(outgoing,true).GetAwaiter().GetResult();}}
    finally{busy=false;if(!closed)UpdateFillState();}
   }
-  void Observe(Lane lane,string text,bool receive,string id=""){if(lane.Seen==text&&(!receive||lane.Id==id))return;Cancel(lane);lane.Id=id;lane.Seen=text;lane.Done="";lane.Changed=DateTime.UtcNow;if(lane.Source.Text!=text){updatingSource=true;try{lane.Source.Text=text;}finally{updatingSource=false;}}lane.First.Text="";if(lane.Second!=null)lane.Second.Text="";lane.Status.Text=text.Length==0?(receive?"等待当前日文回复…":"在上方输入中文，停顿后自动翻译…"):"检测到文字变化，等待片刻…";if(!receive&&fillStatus!=null&&!filling)fillStatus.Text=String.IsNullOrWhiteSpace(text)?"输入中文后自动填入日文；回车发送，Shift + Enter 换行。":"中文已更新；等待当前日文译文完成后再填入。";UpdateFillState();}
+  void Observe(Lane lane,string text,bool receive,string id=""){if(lane.Seen==text&&(!receive||lane.Id==id))return;Cancel(lane);lane.Id=id;lane.Seen=text;lane.Done="";lane.Changed=DateTime.UtcNow;if(lane.Source.Text!=text){updatingSource=true;try{lane.Source.Text=text;}finally{updatingSource=false;}}lane.First.Text="";if(lane.Second!=null)lane.Second.Text="";lane.Status.Text=text.Length==0?(receive?WaitingReply:"在上方输入中文，停顿后自动翻译…"):"检测到文字变化，等待片刻…";if(!receive&&fillStatus!=null&&!filling)fillStatus.Text=String.IsNullOrWhiteSpace(text)?"输入中文后自动填入所选译文；回车发送，Shift + Enter 换行。":"中文已更新；等待当前所选译文完成后再填入。";UpdateFillState();}
   Task Schedule(Lane lane,bool send){
    if(send&&(mainComposing||(floatInput!=null&&floatInput.IsComposing)))return Task.FromResult(0);
    if(lane.Seen==lane.Done||String.IsNullOrWhiteSpace(lane.Seen)||(DateTime.UtcNow-lane.Changed).TotalMilliseconds<650)return Task.FromResult(0);
    if(lane.Seen.Length>5000){lane.Done=lane.Seen;lane.Status.Text="原文超过 5000 字，本次暂不翻译。";return Task.FromResult(0);}
    if(send&&Regex.IsMatch(lane.Seen,@"[\u3040-\u30ff]")){lane.Done=lane.Seen;lane.Status.Text="草稿已是日文，等待中文输入…";return Task.FromResult(0);}
    if(send&&!Regex.IsMatch(lane.Seen,@"[\u3400-\u9fff]")){lane.Done=lane.Seen;lane.Status.Text="等待中文输入…";return Task.FromResult(0);}
-   if(!send&&forceJapanese.IsChecked!=true&&!Regex.IsMatch(lane.Seen,@"[\u3040-\u30ff]")){lane.Done=lane.Seen;lane.Status.Text="这条回复未检测到日文假名，等待新的日文回复。";return Task.FromResult(0);}
+   if(!send&&ConversationLanguages.ReplySource(lane.Seen,forceJapanese.IsChecked==true)==null){lane.Done=lane.Seen;lane.Status.Text="未检测到日文或英文回复；纯汉字日文可勾选按日文翻译。";return Task.FromResult(0);}
    lane.Done=lane.Seen;lane.Cancel=new CancellationTokenSource();int version=lane.Version,generation=epoch;string text=lane.Seen;var token=lane.Cancel.Token;DateTime changed=lane.Changed;lane.Status.Text="正在联网翻译…";
    lane.Pending=RunTranslation(lane,send,text,version,generation,changed,token);
-   if(send&&floatingMode){alternativeStatus="第二种日文措辞正在翻译…";alternativePending=RunAlternative(text,version,generation,token);}
+   if(send&&floatingMode&&conversationLanguage=="ja"){alternativeStatus="第二种日文措辞正在翻译…";alternativePending=RunAlternative(text,version,generation,token);}
    return Task.FromResult(0);
   }
   async Task RunTranslation(Lane lane,bool send,string text,int version,int generation,DateTime changed,CancellationToken token){
@@ -422,21 +423,21 @@ namespace Yuqiao {
     await Task.WhenAll(two==null?new[]{one}:new[]{one,two});
     TranslationResult first=one.Result;TranslationResult second=two==null?null:two.Result;
     if(closed||version!=lane.Version||generation!=epoch||token.IsCancellationRequested)return;
-    if(send&&second==null||!send&&first==null)return;
-    double seconds=(DateTime.UtcNow-changed).TotalSeconds;string providers=first==null?second.Provider:second==null||second.Provider==first.Provider?first.Provider:first.Provider+" / "+second.Provider;lane.Status.Text=String.Format("已更新 · {0:0.0} 秒（检测到变化起） · {1}",seconds,providers)+(send&&first==null?" · 英文参考暂不可用，日文已完成":"");
+    if(send&&(conversationLanguage=="en"?first==null:second==null)||!send&&first==null)return;
+    double seconds=(DateTime.UtcNow-changed).TotalSeconds;string providers=first==null?second.Provider:second==null||second.Provider==first.Provider?first.Provider:first.Provider+" / "+second.Provider;lane.Status.Text=String.Format("已更新 · {0:0.0} 秒（检测到变化起） · {1}",seconds,providers)+(send&&(first==null||second==null)?" · 另一语言译文暂不可用":"");
     if(diagnosticFile!=null){try{string directory=Path.GetDirectoryName(diagnosticFile);if(!String.IsNullOrEmpty(directory))Directory.CreateDirectory(directory);File.AppendAllText(diagnosticFile,String.Format("{0:o}\t{1}\t{2}\t{3:0.000}\t{4}\n",DateTime.Now,send?"draft":"reply",text.Length,seconds,providers));}catch(Exception){lane.Status.Text+=" · 诊断文件未能写入";}}
    }catch(OperationCanceledException){}catch(Exception ex){if(!closed&&version==lane.Version&&generation==epoch){lane.Status.Text=ex is InvalidOperationException?ex.Message:"翻译暂时失败，正在等待新的文字；也可重新连接。";}}
    finally{if(!closed)UpdateFillState();}
   }
   async Task<TranslationResult> TranslateField(Lane lane,bool send,bool japanese,string text,int version,int generation,CancellationToken token){
    try{
-    var result=await service.TranslateAsync(text,send?"zh-Hans":"ja",japanese?"ja":send?"en":"zh-Hans",token);
+    var result=await service.TranslateAsync(text,send?"zh-Hans":ConversationLanguages.ReplySource(text,forceJapanese.IsChecked==true)??"auto",japanese?"ja":send?"en":"zh-Hans",token);
     if(closed||version!=lane.Version||generation!=epoch||token.IsCancellationRequested)return null;
-    if(japanese){lane.Second.Text=result.Text;fillStatus.Text="日文已就绪，准备自动填入 Claude，不发送。";}
-    else {lane.First.Text=result.Text;if(!send){conversationHistory.Reply(boundConversationKey,lane.Id,latestSnapshot==null?0:latestSnapshot.ReplyOrder,result.Text);RefreshHistory();}}
+    if(japanese){lane.Second.Text=result.Text;if(conversationLanguage=="ja")fillStatus.Text="日文已就绪，准备自动填入 Claude，不发送。";}
+    else {lane.First.Text=result.Text;if(send&&conversationLanguage=="en")fillStatus.Text="英文已就绪，准备自动填入 Claude，不发送。";if(!send){conversationHistory.Reply(boundConversationKey,lane.Id,latestSnapshot==null?0:latestSnapshot.ReplyOrder,result.Text);RefreshHistory();}}
     UpdateFillState();return result;
    }catch(OperationCanceledException){return null;}
-    catch(Exception ex){if(!closed&&version==lane.Version&&generation==epoch&&(japanese||!send))lane.Status.Text=ex is InvalidOperationException?ex.Message:"翻译暂时失败；修改中文或重新连接后重试。";return null;}
+    catch(Exception ex){if(!closed&&version==lane.Version&&generation==epoch&&(!send||(conversationLanguage=="ja"?japanese:!japanese)))lane.Status.Text=ex is InvalidOperationException?ex.Message:"翻译暂时失败；修改中文或重新连接后重试。";return null;}
   }
  }
 }

@@ -17,7 +17,7 @@ internal static class FloatingViewsProbe
         try
         {
             input=new FloatingInputWindow();read=new FloatingReadWindow();
-            Check("input view compact and nonactivating",input.Width==480&&input.Height==290&&input.Topmost&&!input.ShowActivated&&!input.ShowInTaskbar&&!input.IsVisible);
+            Check("input view compact and nonactivating",input.Width==480&&input.Height>=290&&input.Height<=330&&input.Topmost&&!input.ShowActivated&&!input.ShowInTaskbar&&!input.IsVisible);
             Check("editable local Chinese and disabled initial fill",!input.Input.IsReadOnly&&!input.Fill.IsEnabled&&input.Follow.IsChecked==true);
             Check("candidate font and wrapping template",input.Candidates.FontSize==16&&input.Candidates.ItemTemplate!=null&&input.Candidates.ItemContainerStyle!=null);
             MethodInfo move=typeof(FloatingInputWindow).GetMethod("MoveCandidate",BindingFlags.Instance|BindingFlags.NonPublic);

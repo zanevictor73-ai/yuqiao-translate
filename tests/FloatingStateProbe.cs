@@ -74,9 +74,9 @@ internal static class FloatingStateProbe
             Pump((Task)Get(window,"alternativePending"));Call(window,"SyncFloating");
             Check("alternate appended keeps selection",candidates.Items.Count==2&&candidates.SelectedItem.ToString()==selected,"existing chosen text preserved when another provider arrives");
             Composition(composer,TextCompositionManager.PreviewTextInputStartEvent);
-            Check("IME immediately disables fill",!(bool)Call(window,"CanFillJapanese")&&!((Button)Get(input,"Fill")).IsEnabled,"mouse path as well as shortcuts is blocked");
+            Check("IME immediately disables fill",!(bool)Call(window,"CanFillTranslation")&&!((Button)Get(input,"Fill")).IsEnabled,"mouse path as well as shortcuts is blocked");
             Composition(composer,TextCompositionManager.PreviewTextInputEvent);
-            Check("IME completion restores valid candidate",(bool)Call(window,"CanFillJapanese")&&((Button)Get(input,"Fill")).IsEnabled,"unchanged committed source remains valid");
+            Check("IME completion restores valid candidate",(bool)Call(window,"CanFillTranslation")&&((Button)Get(input,"Fill")).IsEnabled,"unchanged committed source remains valid");
             composer.Text="修改后的中文。";
             Check("edit clears candidates immediately",candidates.Items.Count==0&&!((Button)Get(input,"Fill")).IsEnabled,"stale candidate disappears synchronously");
             Set(lane,"Changed",DateTime.UtcNow.AddSeconds(-2));int requests=handler.Requests;

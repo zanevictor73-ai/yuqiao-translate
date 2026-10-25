@@ -4,11 +4,11 @@ Extract the entire folder, then open the executable. Requires Windows, .NET Fram
 
 ## Claude edition: the main experience
 
-Open Yuqiao.Claude.exe and the Claude Windows desktop app. Select “Claude 客户端”, enable automatic translation and filling, then choose “悬浮模式” (floating mode).
+Open Yuqiao.Claude.exe and the Claude Windows desktop app. Select “Claude 客户端”, enable automatic translation and filling, then choose “悬浮模式” (floating mode). Select English or Japanese under “发送语言” (Outgoing language).
 
 1. Type Chinese in Yuqiao, or select a Chinese input method and click “语音输入” (Voice input).
-2. Japanese is translated and filled into Claude automatically. Review it first; only your explicit Enter requests sending.
-3. Japanese replies are translated automatically in the Chinese panel on the right. Your original Chinese question is retained, and reply updates do not force you to the end.
+2. Your selected English or Japanese result is filled into Claude automatically. Review it first; only your explicit Enter requests sending.
+3. English or Japanese replies are translated automatically in the Chinese panel on the right. Your original Chinese question is retained, and reply updates do not force you to the end.
 
 The Chinese draft clears after the corresponding sent message is confirmed. Focus normally returns to Claude after filling; click the Chinese editor to revise the source. IME candidate confirmation does not send. Shift + Enter inserts a line break.
 

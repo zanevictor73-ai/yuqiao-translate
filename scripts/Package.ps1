@@ -2,7 +2,7 @@ param([switch]$SkipBuild)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 if(-not $SkipBuild){& (Join-Path $root 'build.ps1'); & (Join-Path $root 'tests\Run-Tests.ps1')}
-$version='1.9.2'
+$version='1.10.0'
 $release=Join-Path $root 'release'
 New-Item -ItemType Directory -Path $release -Force | Out-Null
 Add-Type -AssemblyName System.IO.Compression.FileSystem

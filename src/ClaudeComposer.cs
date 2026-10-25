@@ -21,9 +21,9 @@ namespace Yuqiao
             if (string.IsNullOrWhiteSpace(expectedConversationKey))
                 throw new InvalidOperationException("尚未确认目标会话，请先连接 Claude 当前对话。");
             if (string.IsNullOrWhiteSpace(japanese))
-                throw new InvalidOperationException("日文译文为空，请先完成翻译。");
+                throw new InvalidOperationException("译文为空，请先完成翻译。");
             if (japanese.Length > 5000)
-                throw new InvalidOperationException("日文译文超过 5000 个字符，请缩短后再填入。");
+                throw new InvalidOperationException("译文超过 5000 个字符，请缩短后再填入。");
             string desired = japanese.Trim();
             ChatWindowReader reader = new ChatWindowReader("claude");
             try
@@ -34,7 +34,7 @@ namespace Yuqiao
                 AutomationElement composer = target.FindVisibleComposer();
                 object supported;
                 if (!composer.TryGetCurrentPattern(ValuePattern.Pattern, out supported))
-                    throw new InvalidOperationException("Claude 输入框暂不支持安全填入，请手动粘贴日文译文。");
+                    throw new InvalidOperationException("Claude 输入框暂不支持安全填入，请手动粘贴译文。");
                 ValuePattern value = (ValuePattern)supported;
                 if (value.Current.IsReadOnly || !composer.Current.IsEnabled)
                     throw new InvalidOperationException("Claude 输入框当前不可编辑，请关闭弹窗或等待回复完成后重试。");
@@ -52,10 +52,10 @@ namespace Yuqiao
                 if (!string.Equals(before, desired, StringComparison.Ordinal))
                 {
                     if (!ClaudeSend.IsInteractionForeground(expectedConversationKey))
-                        throw new InvalidOperationException("已切换到其他软件，未填入日文。回到 Claude 后修改中文可重试。");
+                        throw new InvalidOperationException("已切换到其他软件，未填入译文。回到 Claude 后修改中文可重试。");
                     try { value.SetValue(desired); }
                     catch (InvalidOperationException)
-                    { throw new InvalidOperationException("Claude 未接受日文填入，未执行发送。请检查输入框后重试。"); }
+                    { throw new InvalidOperationException("Claude 未接受译文填入，未执行发送。请检查输入框后重试。"); }
                     catch (ArgumentException)
                     { throw new InvalidOperationException("Claude 无法接受这段译文，请缩短或检查文本后重试。"); }
                 }
@@ -69,7 +69,7 @@ namespace Yuqiao
                     if (attempt < 3) Thread.Sleep(40);
                 }
                 if (!verified)
-                    throw new InvalidOperationException("日文填入后的文字与译文不一致，未执行发送。请检查 Claude 输入框后重试。");
+                    throw new InvalidOperationException("译文填入后的文字与译文不一致，未执行发送。请检查 Claude 输入框后重试。");
                 ChatSnapshot after = reader.Read();
                 if (!after.Connected || !string.Equals(after.ConversationKey, expectedConversationKey, StringComparison.Ordinal)
                     || !string.Equals((after.Draft ?? "").Trim(), desired, StringComparison.Ordinal))
@@ -98,7 +98,7 @@ namespace Yuqiao
         {
             if (current.Length != 0 && !string.Equals(current, desired, StringComparison.Ordinal)
                 && (previousOwnedDraft == null || !string.Equals(current, previousOwnedDraft, StringComparison.Ordinal)))
-                throw new InvalidOperationException("Claude 输入框已有其他草稿。为避免覆盖，请先清空该草稿，再填入日文译文。");
+                throw new InvalidOperationException("Claude 输入框已有其他草稿。为避免覆盖，请先清空该草稿，再填入译文。");
         }
     }
 

@@ -186,14 +186,14 @@ namespace YuqiaoQa
                 Call(window,"Observe",outgoing,"填入前的中文",false,"");Set(outgoing,"Changed",DateTime.UtcNow.AddSeconds(-2));
                 Set(window,"connected",true);Set(window,"boundConversationKey","claude|123|https://claude.ai/chat/fixture");
                 Pump((Task)Call(window,"Schedule",outgoing,true));
-                Check("fill disabled while translation pending", !(bool)Call(window,"CanFillJapanese"), "no stale or incomplete Japanese can be filled");
+                Check("fill disabled while translation pending", !(bool)Call(window,"CanFillTranslation"), "no stale or incomplete Japanese can be filled");
                 Pump((Task)Get(outgoing,"Pending"));Call(window,"UpdateFillState");
-                Check("fill accepts latest completed Japanese", (bool)Call(window,"CanFillJapanese") && ((Button)Get(window,"fillJapanese")).IsEnabled, "same current source/version; connected Claude; no writer invocation");
+                Check("fill accepts latest completed Japanese", (bool)Call(window,"CanFillTranslation") && ((Button)Get(window,"fillTranslation")).IsEnabled, "same current source/version; connected Claude; no writer invocation");
                 Box(incoming,"First").Text="远端旧译文";Set(incoming,"Seen","远端旧文本");
                 Call(window,"MarkDisconnected","fixture disconnected");
-                Check("disconnect keeps local result and disables fill", Box(outgoing,"Source").Text=="填入前的中文" && Box(outgoing,"Second").Text=="テスト訳文" && !(bool)Call(window,"CanFillJapanese") && Box(incoming,"First").Text=="", "remote invalid state cleared; local draft/result protected");
+                Check("disconnect keeps local result and disables fill", Box(outgoing,"Source").Text=="填入前的中文" && Box(outgoing,"Second").Text=="テスト訳文" && !(bool)Call(window,"CanFillTranslation") && Box(incoming,"First").Text=="", "remote invalid state cleared; local draft/result protected");
                 Set(window,"connected",true);Box(outgoing,"Source").Text="又改了一次中文";
-                Check("changed Chinese disables fill immediately", !(bool)Call(window,"CanFillJapanese") && Box(outgoing,"Second").Text=="" && (string)Get(outgoing,"Seen")=="又改了一次中文", "new source invalidates prior Japanese before any network task");
+                Check("changed Chinese disables fill immediately", !(bool)Call(window,"CanFillTranslation") && Box(outgoing,"Second").Text=="" && (string)Get(outgoing,"Seen")=="又改了一次中文", "new source invalidates prior Japanese before any network task");
 
                 handler.Fail = true;
                 int completed = handler.Completed;

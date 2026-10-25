@@ -11,8 +11,9 @@ The Claude edition uses C#, WPF and Windows UI Automation. General compiles only
 | GeneralApp.cs | Independent translation window, debounce, cancellation, stale-result protection |
 | App.cs, FloatingViews.cs, PanelControls.cs | Claude companion UI and independently controlled floating panels |
 | TranslationService.cs, TranslationPunctuation.cs | Microsoft primary, Google fallback, bounded memory cache, target-language punctuation |
-| AutomaticDraft.cs, ClaudeComposer.cs | Draft ownership, automatic Japanese filling, conflict protection |
+| AutomaticDraft.cs, ClaudeComposer.cs | Draft ownership, automatic English/Japanese filling, conflict protection |
 | ConversationFlow.cs, ClaudeSend.cs, ConversationUi.cs | Explicit send requests, verification and clearing, original Chinese history |
+| ConversationLanguage.cs | Outgoing language selection, independent result eligibility and incoming English/Japanese detection |
 | ConversationReadingPosition.cs | Stable reading anchor during reply updates |
 | ChatWindowReader.cs, ClaudeChromeReader.cs, ClaudeSettingsReader.cs | Conversation identity and visible Claude UI extraction |
 | NavigationTranslator.cs, NavigationViews.cs | Local UI vocabulary plus translated conversation titles |
@@ -24,7 +25,7 @@ The Claude edition uses C#, WPF and Windows UI Automation. General compiles only
 - Online destinations: edge.microsoft.com and translate.googleapis.com. Translation requests carry the requested text. Google fallback uses an HTTPS query containing text.
 - Windows voice typing is controlled by Windows and may use Microsoft's cloud services. The application does not record audio or save audio files.
 - Drafts, translations, recent chat indexes and service caches are memory-only. They are not encrypted memory.
-- Claude preferences are stored in the current user's LocalApplicationData / YuqiaoTranslateStandalone folder: selected app and panel visibility only.
+- Claude preferences are stored in the current user's LocalApplicationData / YuqiaoTranslateStandalone folder: selected app, outgoing language and panel visibility only.
 - Optional diagnostic output contains event kind, text length, timing and provider, not chat text. Diagnostics are disabled by default.
 - Fixed UI vocabulary is translated locally; visible conversation titles may be sent to the translation service when navigation translation is enabled.
 - No telemetry collector, model keys, browser credentials, automatic-start registration or system time-zone changes are implemented in these public editions.
@@ -44,12 +45,13 @@ Local test environment: Windows 11 x64, .NET Framework 4.8 compiler/runtime. Win
 | FloatingViewsProbe | 15 | Floating layout, input/read/navigation views |
 | FloatingStateProbe | 14 | Panel state and disconnected behavior |
 | ReadingScrollV191Probe | 22 | Question anchor, manual scrolling and streamed answer changes |
+| EnglishConversationProbe | 29 | English automatic filling, explicit sending, receipt clearing, mixed reply detection, language changes, failure isolation and saved preferences |
 | GeneralEditionProbe | 21 | Build separation, language direction, debounce, stale results, pause, IME, copy eligibility |
-| **Total** | **195** | **Synthetic, deterministic checks against the built binaries** |
+| **Total** | **224** | **Synthetic, deterministic checks against the built binaries** |
 
-These tests do not send real chat messages, use the microphone or contact translation services. Windows desktop smoke testing separately verified Chinese → Japanese + English and Japanese → Chinese using synthetic phrases. The existing Claude workflow was tested during development; the public build retains that implementation and is rechecked by the suites above. Automated checks are not proof of speech recognition accuracy or compatibility with every target-app version.
+These tests do not send real chat messages, use the microphone or contact translation services. Windows desktop smoke testing separately verified Chinese → Japanese + English and Japanese → Chinese using synthetic phrases. On 2026-10-25, real desktop testing on this Windows 11 machine verified Chinese → English automatic filling → explicit Enter → English reply translated to Chinese, followed by the same flow in Japanese. Both cleared the local Chinese draft after verified sending and retained the original Chinese in the reading panel. The recorded desktop run used the personal build sharing the same translation, composer and reading code; the public build is separately checked by the suites above. Automated checks are not proof of speech recognition accuracy or compatibility with every target-app version.
 
-自动检查不调用麦克风、不向实际聊天发送消息，也不访问翻译服务。联网冒烟验证另外使用了合成短句。此前开发阶段验证过的 Claude 流程保留在公开版中，并重新运行上述检查。没有把自动检查当作所有软件版本均兼容的证据。
+自动检查不调用麦克风、不向实际聊天发送消息，也不访问翻译服务。联网冒烟验证另外使用了合成短句。2026-10-25 的真实桌面演示验证了英文和日文的自动填入、主动回车发送、草稿清空及右侧中文回译。实机录屏使用共享上述核心代码的自用构建，公开构建另外通过上述自动检查。没有把自动检查当作所有软件版本均兼容的证据。
 
 ## 服务来源说明 / Service attribution
 

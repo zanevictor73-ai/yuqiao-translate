@@ -64,7 +64,7 @@ namespace Yuqiao {
   }
   public bool HasUser(string key,string id){List<Entry> entries;if(!conversations.TryGetValue(key,out entries))return false;return entries.Exists(e=>e.Id=="u:"+id);}
   public void User(string key,ChatUserMessage message,string text,bool original,bool edited){
-   Put(key,"u:"+message.Id,message.Order,text,original?(edited?"我 · 中文原稿（日文有手动改动）":"我 · 中文原稿"):"我 · 日文译回中文",original);
+   Put(key,"u:"+message.Id,message.Order,text,original?(edited?"我 · 中文原稿（译文有手动改动）":"我 · 中文原稿"):"我 · 原文译回中文",original);
   }
   public void Reply(string key,string id,int order,string text){Put(key,"a:"+id,order,text,"Claude · 中文翻译",false);}
   void Put(string key,string id,int order,string text,string label,bool original){

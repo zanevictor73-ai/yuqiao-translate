@@ -78,7 +78,7 @@ class AutoFillV18Probe {
   Ready(w,"英文失败时仍然翻译日文。","");var outgoing=(Lane)Get(w,"outgoing");
   var translating=(Task)w.GetType().GetMethod("RunTranslation",fields).Invoke(w,new object[]{outgoing,true,outgoing.Seen,outgoing.Version,(int)Get(w,"epoch"),DateTime.UtcNow,CancellationToken.None});outgoing.Pending=translating;
   Pump(Task.Delay(180));Check(outgoing.Second.Text=="日本語は成功。"&&!translating.IsCompleted,"Japanese becomes visible before slow English finishes");
-  Check((bool)w.GetType().GetMethod("CanFillJapanese",fields).Invoke(w,null),"fresh Japanese remains eligible while English is pending");
+  Check((bool)w.GetType().GetMethod("CanFillTranslation",fields).Invoke(w,null),"fresh Japanese remains eligible while English is pending");
   Pump(translating);Check(outgoing.First.Text==""&&outgoing.Second.Text=="日本語は成功。","English primary and backup failure cannot clear successful Japanese");
   Check(!w.IsVisible,"pipeline tests used no real desktop writer or microphone");w.Close();
   Console.WriteLine("ALL "+count+" CHECKS PASSED");return 0;
